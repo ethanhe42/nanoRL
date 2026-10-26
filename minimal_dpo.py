@@ -35,8 +35,11 @@ class DPO:
         # Tokenize each (prompt, completion). Mask = 1 only on completion tokens.
         ids_list, masks_list = [], []
         for p, c in zip(prompts, completions):
+            # Tokenize the two halves separately: BPE can merge across the
+            # boundary (e.g. "?<" is one token), which would shift the mask.
             prompt_ids = self.tokenizer(p, return_tensors='pt').input_ids[0]
-            full_ids = self.tokenizer(p + c, return_tensors='pt').input_ids[0]
+            completion_ids = self.tokenizer(c, return_tensors='pt', add_special_tokens=False).input_ids[0]
+            full_ids = torch.cat([prompt_ids, completion_ids])
             prompt_len, seqlen = len(prompt_ids), len(full_ids)
             full_ids = F.pad(full_ids, (0, self.max_seqlen - seqlen), value=self.tokenizer.pad_token_id)
             mask = torch.zeros_like(full_ids)
